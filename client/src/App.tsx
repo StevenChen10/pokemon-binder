@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Session } from '@supabase/supabase-js';
-import { supabase } from './lib/supabase';
-import Navbar from './components/Navbar';
-import LoginPage from './pages/LoginPage';
-import SearchPage from './pages/SearchPage';
-import CollectionPage from './pages/CollectionPage';
-import WishlistPage from './pages/WishlistPage';
+import { supabase } from '@/lib/supabase';
+import Navbar from '@/components/Navbar';
+import LoginPage from '@/pages/LoginPage';
+import SearchPage from '@/pages/SearchPage';
+import CollectionPage from '@/pages/CollectionPage';
+import WishlistPage from '@/pages/WishlistPage';
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -28,7 +28,12 @@ function App() {
   }, []);
 
   if (loading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-3">
+        <span className="text-5xl animate-bounce">🎴</span>
+        <p className="text-primary font-black text-lg animate-pulse">Loading...</p>
+      </div>
+    );
   }
 
   return (

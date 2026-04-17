@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import { PokemonCard, CardSetSummary, TCGPlayerPricing, CollectionCard, WishlistCard } from '../types/pokemon';
 
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api';
 const TCGDEX_BASE = 'https://api.tcgdex.net/v2/en';
 
 // --- Helper to get auth token for our backend ---
@@ -19,7 +19,8 @@ async function getAuthHeaders(): Promise<HeadersInit> {
 export async function searchCards(query: string): Promise<PokemonCard[]> {
   const res = await fetch(`${TCGDEX_BASE}/cards?name=${encodeURIComponent(query)}`);
   if (!res.ok) throw new Error('Failed to fetch cards');
-  return res.json();
+  const cards: PokemonCard[] = await res.json();
+  return cards.filter(c => !/^(A\d|P-A)/.test(c.id) && c.image);
 }
 
 export async function getCardById(id: string): Promise<PokemonCard> {
@@ -32,7 +33,7 @@ export async function getSets(): Promise<CardSetSummary[]> {
   const res = await fetch(`${TCGDEX_BASE}/sets`);
   if (!res.ok) throw new Error('Failed to fetch sets');
   const sets: CardSetSummary[] = await res.json();
-  return sets.filter(s => !/^A\d/.test(s.id));
+  return sets.filter(s => !/^(A\d|P-A)/.test(s.id));
 }
 
 export async function getTCGPlayerPrices(
@@ -52,7 +53,7 @@ export async function getCardsBySet(setId: string): Promise<PokemonCard[]> {
   const res = await fetch(`${TCGDEX_BASE}/sets/${setId}`);
   if (!res.ok) throw new Error(`Failed to fetch set ${setId}`);
   const data = await res.json();
-  return data.cards ?? [];
+  return (data.cards ?? []).filter((c: PokemonCard) => c.image);
 }
 
 // --- Collection API ---

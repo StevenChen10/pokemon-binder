@@ -9,7 +9,14 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors({ origin: /^http:\/\/localhost:\d+$/ }));
+const allowedOrigins = [
+  /^http:\/\/localhost:\d+$/,
+  /\.vercel\.app$/,
+];
+if (process.env.CLIENT_URL) {
+  allowedOrigins.push(new RegExp(`^${process.env.CLIENT_URL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`));
+}
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
 // Routes

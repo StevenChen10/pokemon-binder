@@ -1,29 +1,27 @@
 import { useState } from 'react';
-import { PokemonCard, CardSetSummary, TCGPlayerPricing } from '../types/pokemon';
-import { searchCards, getSets, getCardsBySet, getCardById, getTCGPlayerPrices, addToCollection, addToWishlist } from '../lib/api';
-
-type Tab = 'cards' | 'sets';
+import { toast } from 'sonner';
+import { PokemonCard, CardSetSummary, TCGPlayerPricing } from '@/types/pokemon';
+import { searchCards, getSets, getCardsBySet, getCardById, getTCGPlayerPrices, addToCollection, addToWishlist } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 
 export default function SearchPage() {
-  const [tab, setTab] = useState<Tab>('cards');
-
-  // Cards tab state
   const [query, setQuery] = useState('');
   const [cardResults, setCardResults] = useState<PokemonCard[]>([]);
   const [cardLoading, setCardLoading] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
 
-  // Sets tab state
   const [sets, setSets] = useState<CardSetSummary[]>([]);
   const [setsLoading, setSetsLoading] = useState(false);
-  const [setsError, setSetsError] = useState<string | null>(null);
   const [selectedSet, setSelectedSet] = useState<CardSetSummary | null>(null);
   const [setCards, setSetCards] = useState<PokemonCard[]>([]);
   const [setCardsLoading, setSetCardsLoading] = useState(false);
 
-  const [feedback, setFeedback] = useState<string | null>(null);
-
-  // Card detail modal
   const [modalCard, setModalCard] = useState<PokemonCard | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [tcgPrices, setTcgPrices] = useState<TCGPlayerPricing | null>(null);
@@ -56,18 +54,13 @@ export default function SearchPage() {
     }
   };
 
-  const handleTabChange = async (next: Tab) => {
-    setTab(next);
-    if (next === 'sets' && sets.length === 0) {
-      setSetsLoading(true);
-      setSetsError(null);
-      try {
-        setSets(await getSets());
-      } catch {
-        setSetsError('Failed to load sets. Try again.');
-      } finally {
-        setSetsLoading(false);
-      }
+  const handleSetsLoad = async () => {
+    if (sets.length > 0) return;
+    setSetsLoading(true);
+    try {
+      setSets(await getSets());
+    } finally {
+      setSetsLoading(false);
     }
   };
 
@@ -86,41 +79,62 @@ export default function SearchPage() {
     try {
       if (type === 'collection') await addToCollection(cardId);
       else await addToWishlist(cardId);
-      setFeedback(`Added to ${type}!`);
-      setTimeout(() => setFeedback(null), 2000);
+      toast.success(`Added to ${type}!`);
     } catch {
-      setFeedback('Something went wrong.');
+      toast.error('Something went wrong.');
     }
   };
+
+  const skeletonGrid = (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div key={i} className="bg-card rounded-xl overflow-hidden shadow-sm">
+          <Skeleton className="w-full aspect-[2.5/3.5]" />
+          <div className="p-3 space-y-2">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-3 w-1/2" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 
   const cardGrid = (cards: PokemonCard[]) => (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
       {cards.map((card) => (
-        <div key={card.id} className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition">
+        <div
+          key={card.id}
+          className="bg-card rounded-xl overflow-hidden shadow-sm border-2 border-transparent hover:border-pokemon-yellow hover:shadow-lg transition-all group"
+        >
           {card.image && (
             <img
               src={`${card.image}/low.webp`}
               alt={card.name}
-              className="w-full cursor-pointer"
+              className="w-full cursor-pointer group-hover:scale-[1.02] transition-transform"
               onClick={() => handleCardClick(card)}
             />
           )}
-          <div className="p-2">
-            <p className="font-semibold text-sm">{card.name}</p>
-            <p className="text-xs text-gray-500">{card.set?.name}{card.localId ? ` · #${card.localId}` : ''}</p>
-            <div className="flex gap-1 mt-2">
-              <button
+          <div className="p-2.5">
+            <p className="font-bold text-sm text-primary">{card.name}</p>
+            <p className="text-xs text-muted-foreground font-semibold">
+              {card.set?.name}{card.localId ? ` · #${card.localId}` : ''}
+            </p>
+            <div className="flex gap-1.5 mt-2">
+              <Button
+                size="sm"
                 onClick={() => handleAdd(card.id, 'collection')}
-                className="flex-1 text-xs bg-red-600 text-white py-1 rounded hover:bg-red-700"
+                className="flex-1 h-7 text-xs bg-pokemon-yellow text-pokemon-navy font-black hover:brightness-95"
               >
                 + Collection
-              </button>
-              <button
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
                 onClick={() => handleAdd(card.id, 'wishlist')}
-                className="flex-1 text-xs bg-gray-200 text-gray-700 py-1 rounded hover:bg-gray-300"
+                className="flex-1 h-7 text-xs font-bold bg-pokemon-blue text-white hover:bg-blue-600"
               >
                 + Wishlist
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -128,167 +142,184 @@ export default function SearchPage() {
     </div>
   );
 
-
-  const modal = modalCard && (
-    <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-      onClick={() => setModalCard(null)}
-    >
-      <div
-        className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 flex flex-col gap-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex gap-4">
-          {modalCard.image && (
-            <img src={`${modalCard.image}/high.webp`} alt={modalCard.name} className="w-32 rounded" />
-          )}
-          <div>
-            <h2 className="text-lg font-bold">{modalCard.name}</h2>
-            <p className="text-sm text-gray-500">
-              {modalCard.set?.name}{modalCard.localId ? ` · #${modalCard.localId}` : ''}
-            </p>
-            {modalCard.rarity && <p className="text-xs text-gray-400 mt-1">{modalCard.rarity}</p>}
-          </div>
-        </div>
-
-        {modalLoading && <p className="text-gray-500 text-sm">Loading pricing...</p>}
-
-        {!modalLoading && tcgPrices && (
-          <div>
-            <h3 className="font-semibold text-sm mb-2">TCGPlayer Pricing (USD)</h3>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-              {tcgPrices.marketPrice != null && <><span className="text-gray-500">Market</span><span className="font-semibold">${tcgPrices.marketPrice.toFixed(2)}</span></>}
-              {tcgPrices.lowestPrice != null && <><span className="text-gray-500">Lowest</span><span>${tcgPrices.lowestPrice.toFixed(2)}</span></>}
-            </div>
-            <a
-              href={tcgPrices.productUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-red-600 hover:underline mt-2 inline-block"
-            >
-              View on TCGPlayer →
-            </a>
-          </div>
-        )}
-
-        {!modalLoading && !tcgPrices && (
-          <p className="text-xs text-gray-400">No TCGPlayer pricing available for this card.</p>
-        )}
-
-        <div className="flex gap-2">
-          <button
-            onClick={() => { handleAdd(modalCard.id, 'collection'); setModalCard(null); }}
-            className="flex-1 bg-red-600 text-white py-2 rounded font-semibold hover:bg-red-700 text-sm"
-          >
-            + Collection
-          </button>
-          <button
-            onClick={() => { handleAdd(modalCard.id, 'wishlist'); setModalCard(null); }}
-            className="flex-1 bg-gray-200 text-gray-700 py-2 rounded font-semibold hover:bg-gray-300 text-sm"
-          >
-            + Wishlist
-          </button>
-        </div>
-
-        <button onClick={() => setModalCard(null)} className="text-xs text-gray-400 hover:underline text-center">
-          Close
-        </button>
-      </div>
-    </div>
-  );
-
   return (
     <div className="max-w-5xl mx-auto p-6">
-      {modal}
-      <h1 className="text-2xl font-bold mb-4">Search</h1>
-
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b">
-        <button
-          onClick={() => handleTabChange('cards')}
-          className={`pb-2 px-4 font-semibold border-b-2 transition ${
-            tab === 'cards' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
+      {/* Card Detail Dialog */}
+      <Dialog open={!!modalCard} onOpenChange={(open) => !open && setModalCard(null)}>
+        <DialogContent
+          className="border-4 border-pokemon-yellow sm:max-w-md p-0 overflow-hidden"
+          backgroundImage={modalCard?.image ? `${modalCard.image}/high.webp` : undefined}
         >
-          Cards
-        </button>
-        <button
-          onClick={() => handleTabChange('sets')}
-          className={`pb-2 px-4 font-semibold border-b-2 transition ${
-            tab === 'sets' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Sets
-        </button>
-      </div>
+          <DialogHeader className="bg-pokemon-navy px-6 py-4">
+            <DialogTitle className="text-white font-black text-lg">
+              {modalCard?.name}
+            </DialogTitle>
+            <DialogDescription className="text-blue-200 font-semibold flex items-center gap-2">
+              {modalCard?.set?.name}{modalCard?.localId ? ` · #${modalCard.localId}` : ''}
+              {modalCard?.rarity && (
+                <Badge className="bg-pokemon-yellow text-pokemon-navy font-black border-0">
+                  {modalCard.rarity}
+                </Badge>
+              )}
+            </DialogDescription>
+          </DialogHeader>
 
-      {feedback && <p className="text-green-600 mb-4">{feedback}</p>}
+          <div className="p-6 flex flex-col gap-4">
+            {modalCard?.image && (
+              <img
+                src={`${modalCard.image}/high.webp`}
+                alt={modalCard.name}
+                className="w-44 rounded-xl mx-auto shadow-lg"
+              />
+            )}
 
-      {/* Cards Tab */}
-      {tab === 'cards' && (
-        <>
+            {/* Card details */}
+            {modalCard && (modalCard.hp || modalCard.types?.length) && (
+              <div className="flex items-center justify-center gap-2 flex-wrap">
+                {modalCard.hp != null && (
+                  <Badge variant="outline" className="font-bold bg-white/80 text-pokemon-navy border-white/50">HP {modalCard.hp}</Badge>
+                )}
+                {modalCard.types?.map((t) => (
+                  <Badge key={t} variant="secondary" className="font-bold bg-white/80 text-pokemon-navy">{t}</Badge>
+                ))}
+              </div>
+            )}
+
+            {/* Pricing */}
+            {modalLoading && (
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-8 w-full" />
+              </div>
+            )}
+
+            {!modalLoading && tcgPrices && (
+              <div className="bg-black/40 backdrop-blur-sm rounded-xl p-4">
+                <p className="font-black text-white text-sm mb-2">TCGPlayer Pricing</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                  {tcgPrices.marketPrice != null && (
+                    <>
+                      <span className="text-white/70 font-semibold text-sm">Market</span>
+                      <span className="font-black text-white text-lg">${tcgPrices.marketPrice.toFixed(2)}</span>
+                    </>
+                  )}
+                  {tcgPrices.lowestPrice != null && (
+                    <>
+                      <span className="text-white/70 font-semibold text-sm">Lowest</span>
+                      <span className="font-bold text-white text-sm">${tcgPrices.lowestPrice.toFixed(2)}</span>
+                    </>
+                  )}
+                </div>
+                <a
+                  href={tcgPrices.productUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-pokemon-yellow font-bold hover:underline mt-2 inline-block"
+                >
+                  View on TCGPlayer →
+                </a>
+              </div>
+            )}
+
+            {!modalLoading && !tcgPrices && (
+              <p className="text-sm text-white/70 text-center font-semibold">
+                No pricing available for this card.
+              </p>
+            )}
+
+            <div className="flex gap-2">
+              <Button
+                onClick={() => { handleAdd(modalCard!.id, 'collection'); setModalCard(null); }}
+                className="flex-1 bg-pokemon-yellow text-pokemon-navy font-black hover:brightness-95"
+              >
+                + Collection
+              </Button>
+              <Button
+                onClick={() => { handleAdd(modalCard!.id, 'wishlist'); setModalCard(null); }}
+                className="flex-1 bg-pokemon-blue text-white font-bold hover:bg-blue-600"
+              >
+                + Wishlist
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <h1 className="text-3xl font-black text-primary mb-6">Search</h1>
+
+      <Tabs defaultValue="cards" onValueChange={(v) => v === 'sets' && handleSetsLoad()}>
+        <TabsList className="mb-6">
+          <TabsTrigger value="cards" className="font-black">Cards</TabsTrigger>
+          <TabsTrigger value="sets" className="font-black">Sets</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="cards">
           <form onSubmit={handleCardSearch} className="flex gap-2 mb-6">
-            <input
-              type="text"
+            <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search for a Pokémon..."
-              className="border rounded px-3 py-2 flex-1 focus:outline-none focus:ring-2 focus:ring-red-400"
+              className="font-semibold"
             />
-            <button
-              type="submit"
-              className="bg-red-600 text-white px-4 py-2 rounded font-semibold hover:bg-red-700"
-            >
+            <Button type="submit" className="bg-pokemon-red text-white font-black hover:bg-red-700 px-6">
               Search
-            </button>
+            </Button>
           </form>
-          {cardError && <p className="text-red-500 mb-4">{cardError}</p>}
-          {cardLoading && <p className="text-gray-500">Searching...</p>}
-          {cardGrid(cardResults)}
-        </>
-      )}
 
-      {/* Sets Tab */}
-      {tab === 'sets' && (
-        <>
-          {setsLoading && <p className="text-gray-500">Loading sets...</p>}
-          {setsError && <p className="text-red-500">{setsError}</p>}
+          {cardError && <p className="text-destructive font-bold mb-4">{cardError}</p>}
+          {cardLoading ? skeletonGrid : cardGrid(cardResults)}
+        </TabsContent>
+
+        <TabsContent value="sets">
+          {setsLoading && skeletonGrid}
 
           {selectedSet ? (
             <>
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setSelectedSet(null)}
-                className="text-sm text-red-600 hover:underline mb-4 inline-block"
+                className="mb-4 font-black text-accent"
               >
                 ← Back to sets
-              </button>
-              <h2 className="text-xl font-bold mb-4">{selectedSet.name}</h2>
-              {setCardsLoading && <p className="text-gray-500">Loading cards...</p>}
-              {cardGrid(setCards)}
+              </Button>
+              <div className="flex items-center gap-3 mb-4">
+                <h2 className="text-2xl font-black text-primary">{selectedSet.name}</h2>
+                {selectedSet.cardCount && (
+                  <Badge variant="secondary" className="font-bold">
+                    {selectedSet.cardCount.official} cards
+                  </Badge>
+                )}
+              </div>
+              {setCardsLoading ? skeletonGrid : cardGrid(setCards)}
             </>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {sets.map((set) => (
-                <button
-                  key={set.id}
-                  onClick={() => handleSetClick(set)}
-                  className="border rounded-lg p-3 flex flex-col items-center gap-2 hover:shadow-md transition text-center"
-                >
-                  {set.logo ? (
-                    <img src={`${set.logo}.webp`} alt={set.name} className="h-12 object-contain" />
-                  ) : (
-                    <div className="h-12 flex items-center justify-center text-gray-300 text-2xl">🃏</div>
-                  )}
-                  <p className="text-sm font-semibold">{set.name}</p>
-                  {set.cardCount && (
-                    <p className="text-xs text-gray-500">{set.cardCount.official} cards</p>
-                  )}
-                </button>
-              ))}
-            </div>
+            !setsLoading && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {sets.map((set) => (
+                  <button
+                    key={set.id}
+                    onClick={() => handleSetClick(set)}
+                    className="bg-card rounded-xl p-4 flex flex-col items-center gap-2 border-2 border-transparent hover:border-pokemon-yellow hover:shadow-lg transition-all text-center"
+                  >
+                    {set.logo ? (
+                      <img src={`${set.logo}.webp`} alt={set.name} className="h-12 object-contain" />
+                    ) : (
+                      <div className="h-12 flex items-center justify-center text-3xl">🎴</div>
+                    )}
+                    <p className="text-sm font-black text-primary">{set.name}</p>
+                    {set.cardCount && (
+                      <Badge variant="outline" className="font-bold text-xs">
+                        {set.cardCount.official} cards
+                      </Badge>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )
           )}
-        </>
-      )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

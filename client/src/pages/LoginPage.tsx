@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@/lib/supabase';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -28,47 +31,58 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white p-8 rounded-xl shadow w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-center mb-6">🃏 Pokémon Binder</h1>
-        <h2 className="text-lg font-semibold mb-4">{isSignUp ? 'Create an account' : 'Sign in'}</h2>
+    <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(160deg, #CC0000 50%, #1B3A6B 50%)' }}>
+      <div className="flex-1 flex items-center justify-center p-6">
+        <Card className="w-full max-w-sm border-4 border-pokemon-yellow shadow-2xl overflow-hidden">
+          <CardHeader className="bg-pokemon-navy text-center pb-6 pt-8">
+            <div className="text-5xl mb-2">🎴</div>
+            <CardTitle className="text-2xl font-black text-pokemon-yellow tracking-wide">
+              Pokémon Binder
+            </CardTitle>
+            <CardDescription className="text-blue-200">
+              Your personal card collection
+            </CardDescription>
+          </CardHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-400"
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-400"
-          />
+          <CardContent className="pt-6">
+            <h2 className="text-lg font-bold text-pokemon-navy mb-4">
+              {isSignUp ? 'Create an account' : 'Welcome back!'}
+            </h2>
 
-          {error && <p className="text-red-500 text-sm">{error}</p>}
-          {message && <p className="text-green-600 text-sm">{message}</p>}
+            <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+              <Input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="font-semibold"
+              />
+              <Input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="font-semibold"
+              />
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="bg-red-600 text-white py-2 rounded font-semibold hover:bg-red-700 disabled:opacity-50"
-          >
-            {loading ? 'Loading...' : isSignUp ? 'Sign Up' : 'Sign In'}
-          </button>
-        </form>
+              {error && <p className="text-destructive text-sm font-semibold">{error}</p>}
+              {message && <p className="text-green-600 text-sm font-semibold">{message}</p>}
 
-        <button
-          onClick={() => setIsSignUp(!isSignUp)}
-          className="mt-4 text-sm text-gray-500 hover:underline w-full text-center"
-        >
-          {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
-        </button>
+              <Button type="submit" disabled={loading} className="bg-pokemon-yellow text-pokemon-navy font-black text-lg hover:brightness-95 mt-1">
+                {loading ? 'Loading...' : isSignUp ? 'Sign Up' : 'Sign In'}
+              </Button>
+            </form>
+
+            <button
+              onClick={() => setIsSignUp(!isSignUp)}
+              className="mt-4 text-sm text-pokemon-blue font-bold hover:underline w-full text-center"
+            >
+              {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+            </button>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
