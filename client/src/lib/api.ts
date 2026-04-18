@@ -136,6 +136,9 @@ export async function submitScore(data: {
     headers,
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Failed to submit score');
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Failed to submit score (${res.status})`);
+  }
   return res.json();
 }

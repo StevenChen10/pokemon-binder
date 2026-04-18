@@ -151,7 +151,7 @@ export default function WhosThatPokemonPage() {
       toast.success('Score submitted!');
       loadLeaderboard(selectedRegion.id);
     } catch (err) {
-      toast.error('Failed to submit score. Please try again.');
+      toast.error(err instanceof Error ? err.message : 'Failed to submit score.');
     } finally {
       setSubmitting(false);
     }
