@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { toast } from 'sonner';
 import { REGIONS, type Region, type GameState, type LeaderboardEntry } from '@/types/game';
 import { getLeaderboard, submitScore } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -147,9 +148,10 @@ export default function WhosThatPokemonPage() {
         time_limit: TIME_LIMIT,
       });
       setSubmitted(true);
+      toast.success('Score submitted!');
       loadLeaderboard(selectedRegion.id);
-    } catch {
-      // silently fail
+    } catch (err) {
+      toast.error('Failed to submit score. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -262,7 +264,7 @@ export default function WhosThatPokemonPage() {
 
           {/* Submit score */}
           {!submitted ? (
-            <div className="flex gap-2 max-w-xs mx-auto mb-4">
+            <form onSubmit={e => { e.preventDefault(); handleSubmitScore(); }} className="flex gap-2 max-w-xs mx-auto mb-4">
               <Input
                 value={displayName}
                 onChange={e => setDisplayName(e.target.value)}
@@ -271,13 +273,13 @@ export default function WhosThatPokemonPage() {
                 maxLength={20}
               />
               <Button
-                onClick={handleSubmitScore}
+                type="submit"
                 disabled={!displayName.trim() || submitting}
                 className="bg-pokemon-yellow hover:bg-pokemon-yellow/80 text-pokemon-navy font-black rounded-lg px-5"
               >
                 {submitting ? '...' : 'Submit'}
               </Button>
-            </div>
+            </form>
           ) : (
             <p className="text-green-600 font-bold mb-4">Score submitted!</p>
           )}
