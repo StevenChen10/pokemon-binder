@@ -31,18 +31,57 @@ async function getAuthHeaders(): Promise<HeadersInit> {
 
 // --- TCGdex API ---
 
+// Map PokeAPI language codes to TCGdex language codes
+const POKEAPI_TO_TCGDEX: Record<string, LanguageCode> = {
+  en: 'en',
+  fr: 'fr',
+  es: 'es',
+  it: 'it',
+  pt: 'pt',
+  de: 'de',
+  ja: 'ja',
+  ko: 'ko',
+  'zh-Hant': 'zh-tw',
+};
+
+async function getTranslatedNames(englishName: string): Promise<Map<LanguageCode, string>> {
+  const names = new Map<LanguageCode, string>();
+  names.set('en', englishName);
+
+  try {
+    const res = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${englishName.toLowerCase()}`);
+    if (!res.ok) return names;
+    const data = await res.json();
+    for (const entry of data.names) {
+      const tcgCode = POKEAPI_TO_TCGDEX[entry.language.name];
+      if (tcgCode) {
+        names.set(tcgCode, entry.name);
+      }
+    }
+  } catch {
+    // If PokeAPI lookup fails, just search with the English name
+  }
+
+  return names;
+}
+
 export async function searchCards(query: string, lang?: LanguageCode): Promise<PokemonCard[]> {
+  // Get translated names for the search query
+  const translatedNames = await getTranslatedNames(query.trim());
+
   if (lang) {
-    const res = await fetch(`${TCGDEX_BASE}/${lang}/cards?name=${encodeURIComponent(query)}`);
+    const searchName = translatedNames.get(lang) || query;
+    const res = await fetch(`${TCGDEX_BASE}/${lang}/cards?name=${encodeURIComponent(searchName)}`);
     if (!res.ok) throw new Error('Failed to fetch cards');
     const cards: PokemonCard[] = await res.json();
     return cards.filter(c => !/^(A\d|P-A)/.test(c.id) && c.image).map(c => ({ ...c, lang }));
   }
 
-  // Search all languages in parallel
+  // Search all languages in parallel using translated names
   const results = await Promise.allSettled(
     LANGUAGES.map(async ({ code }) => {
-      const res = await fetch(`${TCGDEX_BASE}/${code}/cards?name=${encodeURIComponent(query)}`);
+      const searchName = translatedNames.get(code) || query;
+      const res = await fetch(`${TCGDEX_BASE}/${code}/cards?name=${encodeURIComponent(searchName)}`);
       if (!res.ok) return [];
       const cards: PokemonCard[] = await res.json();
       return cards
