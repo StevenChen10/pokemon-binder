@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { PokemonCard, CardSetSummary, TCGPlayerPricing } from '@/types/pokemon';
-import { searchCards, getSets, getCardsBySet, getCardById, getTCGPlayerPrices, addToCollection, addToWishlist } from '@/lib/api';
+import { searchCards, getSets, getCardsBySet, getCardById, getTCGPlayerPrices, addToCollection, addToWishlist, LANGUAGES, type LanguageCode } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 
 export default function SearchPage() {
   const [query, setQuery] = useState('');
+  const [lang, setLang] = useState<LanguageCode>('en');
   const [cardResults, setCardResults] = useState<PokemonCard[]>([]);
   const [cardLoading, setCardLoading] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
@@ -31,7 +32,7 @@ export default function SearchPage() {
     setTcgPrices(null);
     setModalLoading(true);
     try {
-      const full = await getCardById(card.id);
+      const full = await getCardById(card.id, lang);
       setModalCard(full);
       const prices = await getTCGPlayerPrices(full.name, full.set?.name, full.localId);
       setTcgPrices(prices);
@@ -46,7 +47,7 @@ export default function SearchPage() {
     setCardLoading(true);
     setCardError(null);
     try {
-      setCardResults(await searchCards(query));
+      setCardResults(await searchCards(query, lang));
     } catch {
       setCardError('Failed to search cards. Try again.');
     } finally {
@@ -55,10 +56,9 @@ export default function SearchPage() {
   };
 
   const handleSetsLoad = async () => {
-    if (sets.length > 0) return;
     setSetsLoading(true);
     try {
-      setSets(await getSets());
+      setSets(await getSets(lang));
     } finally {
       setSetsLoading(false);
     }
@@ -69,10 +69,18 @@ export default function SearchPage() {
     setSetCards([]);
     setSetCardsLoading(true);
     try {
-      setSetCards(await getCardsBySet(set.id));
+      setSetCards(await getCardsBySet(set.id, lang));
     } finally {
       setSetCardsLoading(false);
     }
+  };
+
+  const handleLangChange = (newLang: LanguageCode) => {
+    setLang(newLang);
+    setCardResults([]);
+    setSets([]);
+    setSelectedSet(null);
+    setSetCards([]);
   };
 
   const handleAdd = async (cardId: string, type: 'collection' | 'wishlist') => {
@@ -245,9 +253,20 @@ export default function SearchPage() {
         </DialogContent>
       </Dialog>
 
-      <h1 className="text-3xl font-black text-primary mb-6">Search</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-black text-primary">Search</h1>
+        <select
+          value={lang}
+          onChange={e => handleLangChange(e.target.value as LanguageCode)}
+          className="bg-card border-2 border-border rounded-lg px-3 py-1.5 text-sm font-bold text-primary cursor-pointer hover:border-pokemon-blue transition"
+        >
+          {LANGUAGES.map(l => (
+            <option key={l.code} value={l.code}>{l.label}</option>
+          ))}
+        </select>
+      </div>
 
-      <Tabs defaultValue="cards" onValueChange={(v) => v === 'sets' && handleSetsLoad()}>
+      <Tabs defaultValue="cards" onValueChange={(v) => { if (v === 'sets') handleSetsLoad(); }}>
         <TabsList className="mb-6">
           <TabsTrigger value="cards" className="font-black">Cards</TabsTrigger>
           <TabsTrigger value="sets" className="font-black">Sets</TabsTrigger>

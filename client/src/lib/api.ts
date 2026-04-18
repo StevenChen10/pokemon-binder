@@ -3,7 +3,21 @@ import { PokemonCard, CardSetSummary, TCGPlayerPricing, CollectionCard, Wishlist
 import { LeaderboardEntry } from '../types/game';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api';
-const TCGDEX_BASE = 'https://api.tcgdex.net/v2/en';
+const TCGDEX_BASE = 'https://api.tcgdex.net/v2';
+
+export const LANGUAGES = [
+  { code: 'en', label: 'English' },
+  { code: 'fr', label: 'Français' },
+  { code: 'es', label: 'Español' },
+  { code: 'it', label: 'Italiano' },
+  { code: 'pt', label: 'Português' },
+  { code: 'de', label: 'Deutsch' },
+  { code: 'ja', label: '日本語' },
+  { code: 'ko', label: '한국어' },
+  { code: 'zh-tw', label: '繁體中文' },
+] as const;
+
+export type LanguageCode = typeof LANGUAGES[number]['code'];
 
 // --- Helper to get auth token for our backend ---
 async function getAuthHeaders(): Promise<HeadersInit> {
@@ -17,21 +31,21 @@ async function getAuthHeaders(): Promise<HeadersInit> {
 
 // --- TCGdex API ---
 
-export async function searchCards(query: string): Promise<PokemonCard[]> {
-  const res = await fetch(`${TCGDEX_BASE}/cards?name=${encodeURIComponent(query)}`);
+export async function searchCards(query: string, lang: LanguageCode = 'en'): Promise<PokemonCard[]> {
+  const res = await fetch(`${TCGDEX_BASE}/${lang}/cards?name=${encodeURIComponent(query)}`);
   if (!res.ok) throw new Error('Failed to fetch cards');
   const cards: PokemonCard[] = await res.json();
   return cards.filter(c => !/^(A\d|P-A)/.test(c.id) && c.image);
 }
 
-export async function getCardById(id: string): Promise<PokemonCard> {
-  const res = await fetch(`${TCGDEX_BASE}/cards/${id}`);
+export async function getCardById(id: string, lang: LanguageCode = 'en'): Promise<PokemonCard> {
+  const res = await fetch(`${TCGDEX_BASE}/${lang}/cards/${id}`);
   if (!res.ok) throw new Error(`Failed to fetch card ${id}`);
   return res.json();
 }
 
-export async function getSets(): Promise<CardSetSummary[]> {
-  const res = await fetch(`${TCGDEX_BASE}/sets`);
+export async function getSets(lang: LanguageCode = 'en'): Promise<CardSetSummary[]> {
+  const res = await fetch(`${TCGDEX_BASE}/${lang}/sets`);
   if (!res.ok) throw new Error('Failed to fetch sets');
   const sets: CardSetSummary[] = await res.json();
   return sets.filter(s => !/^(A\d|P-A)/.test(s.id));
@@ -50,8 +64,8 @@ export async function getTCGPlayerPrices(
   return res.json();
 }
 
-export async function getCardsBySet(setId: string): Promise<PokemonCard[]> {
-  const res = await fetch(`${TCGDEX_BASE}/sets/${setId}`);
+export async function getCardsBySet(setId: string, lang: LanguageCode = 'en'): Promise<PokemonCard[]> {
+  const res = await fetch(`${TCGDEX_BASE}/${lang}/sets/${setId}`);
   if (!res.ok) throw new Error(`Failed to fetch set ${setId}`);
   const data = await res.json();
   return (data.cards ?? []).filter((c: PokemonCard) => c.image);
