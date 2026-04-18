@@ -12,7 +12,7 @@ import { Separator } from '@/components/ui/separator';
 
 export default function SearchPage() {
   const [query, setQuery] = useState('');
-  const [lang, setLang] = useState<LanguageCode>('en');
+  const [langFilter, setLangFilter] = useState<LanguageCode | 'all'>('all');
   const [cardResults, setCardResults] = useState<PokemonCard[]>([]);
   const [cardLoading, setCardLoading] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
@@ -32,8 +32,8 @@ export default function SearchPage() {
     setTcgPrices(null);
     setModalLoading(true);
     try {
-      const full = await getCardById(card.id, lang);
-      setModalCard(full);
+      const full = await getCardById(card.id, (card.lang as LanguageCode) || 'en');
+      setModalCard({ ...full, lang: card.lang });
       const prices = await getTCGPlayerPrices(full.name, full.set?.name, full.localId);
       setTcgPrices(prices);
     } finally {
@@ -47,7 +47,7 @@ export default function SearchPage() {
     setCardLoading(true);
     setCardError(null);
     try {
-      setCardResults(await searchCards(query, lang));
+      setCardResults(await searchCards(query));
     } catch {
       setCardError('Failed to search cards. Try again.');
     } finally {
@@ -58,7 +58,7 @@ export default function SearchPage() {
   const handleSetsLoad = async () => {
     setSetsLoading(true);
     try {
-      setSets(await getSets(lang));
+      setSets(await getSets());
     } finally {
       setSetsLoading(false);
     }
@@ -69,19 +69,15 @@ export default function SearchPage() {
     setSetCards([]);
     setSetCardsLoading(true);
     try {
-      setSetCards(await getCardsBySet(set.id, lang));
+      setSetCards(await getCardsBySet(set.id));
     } finally {
       setSetCardsLoading(false);
     }
   };
 
-  const handleLangChange = (newLang: LanguageCode) => {
-    setLang(newLang);
-    setCardResults([]);
-    setSets([]);
-    setSelectedSet(null);
-    setSetCards([]);
-  };
+  const filteredCards = langFilter === 'all'
+    ? cardResults
+    : cardResults.filter(c => c.lang === langFilter);
 
   const handleAdd = async (cardId: string, type: 'collection' | 'wishlist') => {
     try {
@@ -107,20 +103,29 @@ export default function SearchPage() {
     </div>
   );
 
+  const langLabel = (code: string) => LANGUAGES.find(l => l.code === code)?.label ?? code;
+
   const cardGrid = (cards: PokemonCard[]) => (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
       {cards.map((card) => (
         <div
-          key={card.id}
+          key={`${card.id}-${card.lang || 'en'}`}
           className="bg-card rounded-xl overflow-hidden shadow-sm border-2 border-transparent hover:border-pokemon-yellow hover:shadow-lg transition-all group"
         >
           {card.image && (
-            <img
-              src={`${card.image}/low.webp`}
-              alt={card.name}
-              className="w-full cursor-pointer group-hover:scale-[1.02] transition-transform"
-              onClick={() => handleCardClick(card)}
-            />
+            <div className="relative">
+              <img
+                src={`${card.image}/low.webp`}
+                alt={card.name}
+                className="w-full cursor-pointer group-hover:scale-[1.02] transition-transform"
+                onClick={() => handleCardClick(card)}
+              />
+              {card.lang && card.lang !== 'en' && (
+                <span className="absolute top-1.5 right-1.5 bg-pokemon-navy/90 text-white text-[0.6rem] font-bold px-1.5 py-0.5 rounded-md uppercase">
+                  {card.lang}
+                </span>
+              )}
+            </div>
           )}
           <div className="p-2.5">
             <p className="font-bold text-sm text-primary">{card.name}</p>
@@ -164,6 +169,11 @@ export default function SearchPage() {
             </DialogTitle>
             <DialogDescription className="text-blue-200 font-semibold flex items-center gap-2">
               {modalCard?.set?.name}{modalCard?.localId ? ` · #${modalCard.localId}` : ''}
+              {modalCard?.lang && modalCard.lang !== 'en' && (
+                <Badge className="bg-pokemon-blue text-white font-black border-0 uppercase text-[0.6rem]">
+                  {modalCard.lang}
+                </Badge>
+              )}
               {modalCard?.rarity && (
                 <Badge className="bg-pokemon-yellow text-pokemon-navy font-black border-0">
                   {modalCard.rarity}
@@ -253,18 +263,7 @@ export default function SearchPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-black text-primary">Search</h1>
-        <select
-          value={lang}
-          onChange={e => handleLangChange(e.target.value as LanguageCode)}
-          className="bg-card border-2 border-border rounded-lg px-3 py-1.5 text-sm font-bold text-primary cursor-pointer hover:border-pokemon-blue transition"
-        >
-          {LANGUAGES.map(l => (
-            <option key={l.code} value={l.code}>{l.label}</option>
-          ))}
-        </select>
-      </div>
+      <h1 className="text-3xl font-black text-primary mb-6">Search</h1>
 
       <Tabs defaultValue="cards" onValueChange={(v) => { if (v === 'sets') handleSetsLoad(); }}>
         <TabsList className="mb-6">
@@ -286,7 +285,36 @@ export default function SearchPage() {
           </form>
 
           {cardError && <p className="text-destructive font-bold mb-4">{cardError}</p>}
-          {cardLoading ? skeletonGrid : cardGrid(cardResults)}
+
+          {cardResults.length > 0 && !cardLoading && (
+            <div className="flex flex-wrap gap-1.5 mb-4">
+              <button
+                onClick={() => setLangFilter('all')}
+                className={`px-3 py-1 rounded-full text-xs font-bold transition ${
+                  langFilter === 'all'
+                    ? 'bg-pokemon-navy text-white'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                }`}
+              >
+                All ({cardResults.length})
+              </button>
+              {LANGUAGES.filter(l => cardResults.some(c => c.lang === l.code)).map(l => (
+                <button
+                  key={l.code}
+                  onClick={() => setLangFilter(l.code)}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition ${
+                    langFilter === l.code
+                      ? 'bg-pokemon-navy text-white'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                >
+                  {l.label} ({cardResults.filter(c => c.lang === l.code).length})
+                </button>
+              ))}
+            </div>
+          )}
+
+          {cardLoading ? skeletonGrid : cardGrid(filteredCards)}
         </TabsContent>
 
         <TabsContent value="sets">

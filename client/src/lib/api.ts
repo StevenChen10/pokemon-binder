@@ -31,11 +31,40 @@ async function getAuthHeaders(): Promise<HeadersInit> {
 
 // --- TCGdex API ---
 
-export async function searchCards(query: string, lang: LanguageCode = 'en'): Promise<PokemonCard[]> {
-  const res = await fetch(`${TCGDEX_BASE}/${lang}/cards?name=${encodeURIComponent(query)}`);
-  if (!res.ok) throw new Error('Failed to fetch cards');
-  const cards: PokemonCard[] = await res.json();
-  return cards.filter(c => !/^(A\d|P-A)/.test(c.id) && c.image);
+export async function searchCards(query: string, lang?: LanguageCode): Promise<PokemonCard[]> {
+  if (lang) {
+    const res = await fetch(`${TCGDEX_BASE}/${lang}/cards?name=${encodeURIComponent(query)}`);
+    if (!res.ok) throw new Error('Failed to fetch cards');
+    const cards: PokemonCard[] = await res.json();
+    return cards.filter(c => !/^(A\d|P-A)/.test(c.id) && c.image).map(c => ({ ...c, lang }));
+  }
+
+  // Search all languages in parallel
+  const results = await Promise.allSettled(
+    LANGUAGES.map(async ({ code }) => {
+      const res = await fetch(`${TCGDEX_BASE}/${code}/cards?name=${encodeURIComponent(query)}`);
+      if (!res.ok) return [];
+      const cards: PokemonCard[] = await res.json();
+      return cards
+        .filter(c => !/^(A\d|P-A)/.test(c.id) && c.image)
+        .map(c => ({ ...c, lang: code }));
+    })
+  );
+
+  const allCards: PokemonCard[] = [];
+  const seen = new Set<string>();
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      for (const card of result.value) {
+        const key = `${card.id}-${card.lang}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          allCards.push(card);
+        }
+      }
+    }
+  }
+  return allCards;
 }
 
 export async function getCardById(id: string, lang: LanguageCode = 'en'): Promise<PokemonCard> {

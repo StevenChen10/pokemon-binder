@@ -11,6 +11,7 @@ export interface PokemonCard {
   attacks?: Attack[];
   weaknesses?: Weakness[];
   illustrator?: string;
+  lang?: string;
 }
 
 export interface CardSet {
