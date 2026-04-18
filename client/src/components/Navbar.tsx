@@ -73,6 +73,7 @@ export default function Navbar() {
         {navLink('/search', 'Search')}
         {navLink('/collection', 'Collection')}
         {navLink('/wishlist', 'Wishlist')}
+        {navLink('/whos-that-pokemon', "Who's That?")}
         <Button
           variant="destructive"
           size="sm"

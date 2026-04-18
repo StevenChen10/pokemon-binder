@@ -7,6 +7,7 @@ import LoginPage from '@/pages/LoginPage';
 import SearchPage from '@/pages/SearchPage';
 import CollectionPage from '@/pages/CollectionPage';
 import WishlistPage from '@/pages/WishlistPage';
+import WhosThatPokemonPage from '@/pages/WhosThatPokemonPage';
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -55,6 +56,10 @@ function App() {
         <Route
           path="/wishlist"
           element={session ? <WishlistPage /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="/whos-that-pokemon"
+          element={session ? <WhosThatPokemonPage /> : <Navigate to="/login" />}
         />
         <Route path="*" element={<Navigate to={session ? '/search' : '/login'} />} />
       </Routes>
