@@ -4,6 +4,7 @@ import cors from 'cors';
 import collectionRoutes from './routes/collection';
 import wishlistRoutes from './routes/wishlist';
 import pricesRoutes from './routes/prices';
+import leaderboardRoutes from './routes/leaderboard';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,6 +24,7 @@ app.use(express.json());
 app.use('/api/collection', collectionRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/prices', pricesRoutes);
+app.use('/api/leaderboard', leaderboardRoutes);
 
 // Health check
 app.get('/health', (_req, res) => {

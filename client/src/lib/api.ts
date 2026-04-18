@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { PokemonCard, CardSetSummary, TCGPlayerPricing, CollectionCard, WishlistCard } from '../types/pokemon';
+import { LeaderboardEntry } from '../types/game';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api';
 const TCGDEX_BASE = 'https://api.tcgdex.net/v2/en';
@@ -112,4 +113,29 @@ export async function removeFromWishlist(cardId: string): Promise<void> {
     headers,
   });
   if (!res.ok) throw new Error('Failed to remove card from wishlist');
+}
+
+// --- Leaderboard API ---
+
+export async function getLeaderboard(region?: string): Promise<LeaderboardEntry[]> {
+  const params = region ? `?region=${encodeURIComponent(region)}` : '';
+  const res = await fetch(`${API_BASE}/leaderboard${params}`);
+  if (!res.ok) throw new Error('Failed to fetch leaderboard');
+  return res.json();
+}
+
+export async function submitScore(data: {
+  display_name: string;
+  region: string;
+  score: number;
+  time_limit: number;
+}): Promise<LeaderboardEntry> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/leaderboard`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to submit score');
+  return res.json();
 }
